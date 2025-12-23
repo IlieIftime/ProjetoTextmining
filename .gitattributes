@@ -1,3 +1,6 @@
+*.keras filter=lfs diff=lfs merge=lfs -text
+*.joblib filter=lfs diff=lfs merge=lfs -text
+*.csv filter=lfs diff=lfs merge=lfs -text
 data/AI_Human.csv filter=lfs diff=lfs merge=lfs -text
 assets/models/ann_safe_model.keras filter=lfs diff=lfs merge=lfs -text
 models/tfidf_nb_model.joblib filter=lfs diff=lfs merge=lfs -text
