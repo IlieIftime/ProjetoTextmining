@@ -1,0 +1,25 @@
+{
+    "timestamp_utc": "2025-12-20T21:52:53.086492",
+    "dataset_stats": {
+        "total_samples": 487235,
+        "training_samples": 389788,
+        "test_samples": 97447
+    },
+    "models_available": [
+        "BoW + LogisticRegression",
+        "TFIDF + LinearSVC",
+        "TFIDF + NaiveBayes",
+        "Word2Vec + LogisticRegression",
+        "SafeTFIDF + XGBoost",
+        "SafeTFIDF + ANN"
+    ],
+    "assets_generated": [
+        "assets/",
+        "models/",
+        "assets/models/",
+        "assets/vectorizers/",
+        "assets/plots/eda/",
+        "assets/plots/evaluation/",
+        "assets/data_exports/"
+    ]
+}

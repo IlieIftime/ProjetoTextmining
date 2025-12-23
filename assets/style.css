@@ -1,0 +1,28 @@
+/* assets/style.css */
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #f8f9fa;
+    color: #212529;
+}
+.navbar {
+    box-shadow: 0 2px 4px rgba(0,0,0,.08);
+    font-weight: 600;
+}
+.card-header {
+    font-weight: 700;
+    background-color: #343a40;
+    color: white;
+}
+.kpi-card {
+    border-left-width: 5px;
+    border-radius: .25rem;
+}
+.kpi-card-value {
+    font-size: 2rem;
+    font-weight: 700;
+}
+.kpi-card-title {
+    font-size: 0.9rem;
+    color: #6c757d;
+    text-transform: uppercase;
+}

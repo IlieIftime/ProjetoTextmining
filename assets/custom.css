@@ -1,0 +1,32 @@
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #f8f9fa;
+}
+
+.mural-token-hover:hover {
+    background-color: #e9ecef;
+    text-decoration: underline;
+    text-decoration-color: #0d6efd;
+    text-decoration-thickness: 2px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Sombreado claro adicionado */
+    transform: translateY(-1px); /* Ligeiro efeito de elevação */
+    transition: all 0.2s ease;
+}
+
+/* Estilo para quando a palavra é clicada (focada) */
+.mural-token-hover:focus {
+    background-color: #fff3cd;
+    outline: none;
+    border-bottom: 2px solid #ffc107;
+    font-weight: 600;
+}
+
+.card {
+    border: none;
+    border-radius: 8px;
+}
+
+.nav-link.active {
+    font-weight: 600;
+    border-bottom: 2px solid white;
+}

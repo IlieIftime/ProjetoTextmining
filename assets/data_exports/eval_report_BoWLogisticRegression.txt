@@ -1,0 +1,10 @@
+Classification Report for: BoW + LogisticRegression
+
+              precision    recall  f1-score   support
+
+           0     0.9993    0.9995    0.9994     61159
+           1     0.9992    0.9988    0.9990     36288
+
+    accuracy                         0.9993     97447
+   macro avg     0.9992    0.9992    0.9992     97447
+weighted avg     0.9993    0.9993    0.9993     97447

@@ -1,0 +1,10 @@
+Classification Report for: TFIDF + LinearSVC
+
+              precision    recall  f1-score   support
+
+           0     0.9997    0.9999    0.9998     61159
+           1     0.9998    0.9995    0.9997     36288
+
+    accuracy                         0.9997     97447
+   macro avg     0.9998    0.9997    0.9997     97447
+weighted avg     0.9997    0.9997    0.9997     97447

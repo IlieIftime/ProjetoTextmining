@@ -1,0 +1,10 @@
+Classification Report for: SafeTFIDF + XGBoost
+
+              precision    recall  f1-score   support
+
+           0     0.9862    0.9959    0.9910     61159
+           1     0.9929    0.9765    0.9846     36288
+
+    accuracy                         0.9887     97447
+   macro avg     0.9896    0.9862    0.9878     97447
+weighted avg     0.9887    0.9887    0.9886     97447
