@@ -46,20 +46,21 @@ Aplicação web de análise linguística para distinguir texto gerado por IA de 
    ```
 ## PS: caso dê erro na linha de run.app_server(debug=True) trocar por app.run(debug=True)
 #### Instruções para clonar o repositório e obter ficheiros grandes 
+## PS2: Colocar a pasta do projeto no utilizador ou ambiente de trabalho de maneira que não fique várias pastas sobrepostas
 Resumo  
 
 ##### Os ficheiros grandes do projeto (modelos e CSVs) são geridos com Git LFS. Para obter os ficheiros de csv (datasets) deve ter Git LFS instalado ou executar um passo adicional para baixar os ficheiros LFS.
 
-### 1. Instalar Git LFS (uma vez)
+### 1. Instalar Git LFS (uma vez, se não estiver instalado)
 ```bash
 git lfs install
 ```
- ### 2. Clonar o repositório
-git clone https://github.com/IlieIftime/ProjetoTextmining.git
+ ### 2. Clonar o repositório (somente se não tiver realizado este passo como 1º passo)
+git clone https://github.com/IlieIftime/ProjetoTextmining.git 
 ```bash
 cd ProjetoTextmining
 ```
- ### 3. Baixar os ficheiros LFS (se necessário)
+ ### 3. Baixar os ficheiros LFS (se quiser obter os datasets para correr o estudo do jupyter notebook)
 ```bash
 git lfs pull
 ```
