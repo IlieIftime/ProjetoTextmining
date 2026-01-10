@@ -1,7 +1,18 @@
+import os
+# Forçar compatibilidade com Keras 2 (necessário para carregar modelos antigos em TF 2.16+)
+os.environ['TF_USE_LEGACY_KERAS'] = '1'
+
+import sys
 import joblib
 import tensorflow as tf
 from config import settings
-import os
+
+# Aumenta o limite de recursão para carregar modelos complexos
+try:
+    sys.setrecursionlimit(3000)
+    print("Limite de recursão aumentado para 3000.")
+except (ValueError, RuntimeError):
+    print("Aviso: Não foi possível aumentar o limite de recursão.")
 
 _LOADED_MODELS = {}
 _VECTORIZER = None
@@ -32,8 +43,22 @@ def load_model(model_name):
         return None
         
     try:
+        if 'XGB' in model_name:
+            try:
+                import xgboost
+            except ImportError:
+                print(f"AVISO: A biblioteca 'xgboost' é necessária para o modelo {model_name}. Instale com: pip install xgboost")
+
         if str(path).endswith('.keras') or str(path).endswith('.h5'):
-            model = tf.keras.models.load_model(path)
+            try:
+                model = tf.keras.models.load_model(path)
+            except Exception as e:
+                print(f"Aviso: Falha no carregamento padrão de {model_name}. Tentando com compile=False... Erro: {e}")
+                try:
+                    model = tf.keras.models.load_model(path, compile=False)
+                except Exception as e2:
+                    print(f"ERRO CRÍTICO: Falha ao carregar {model_name}. O modelo será ignorado. Erro: {e2}")
+                    return None
         else:
             model = joblib.load(path)
             

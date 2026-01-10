@@ -117,26 +117,282 @@ def generate_varied_comment(query):
     ]
     return f"{random.choice(openers)} {random.choice(middles)} {random.choice(closers)}"
 
-def search_duckduckgo(query, max_results=5):
-    """Busca URLs reais no DuckDuckGo HTML."""
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+def search_serpapi(query, max_results=15):
+    """Busca URLs reais usando SerpAPI (Google Search) com retry logic."""
+    api_key = "ea185215718b65c4fb026572a36db641d8f327a9d4e6f55752ee8d1544340dca"
+    endpoint = "https://serpapi.com/search"
+
+    params = {
+        "engine": "google",
+        "q": query,
+        "api_key": api_key,
+        "num": max_results,
+        "hl": "en"
     }
-    url = f"https://html.duckduckgo.com/html/?q={query}"
+
+    for attempt in range(3):  # 3 tentativas
+        try:
+            res = requests.get(endpoint, params=params, timeout=10)
+            res.raise_for_status()  # Garante que erros HTTP sejam capturados
+            data = res.json()
+
+            if "organic_results" in data and data["organic_results"]:
+                urls = [item["link"] for item in data["organic_results"] if "link" in item]
+                if urls:
+                    print(f"[DEBUG] {len(urls)} URLs encontradas (SerpAPI)")
+                    return urls
+
+            print(f"[DEBUG] Nenhum resultado orgânico na tentativa {attempt+1}")
+            if "error" in data:
+                print(f"    [SERPAPI ERROR] {data['error']}")
+            if attempt < 2:
+                time.sleep(1)
+
+        except requests.exceptions.RequestException as e:
+            print(f"[DEBUG] SerpAPI tentativa {attempt + 1} falhou: {type(e).__name__}")
+            if attempt < 2:
+                time.sleep(1)
+
+    print("[DEBUG] Falha total na busca com SerpAPI após 3 tentativas.")
+    return []
+
+
+def extract_article_image(article_obj, base_url):
+    """Extrai imagem do artigo com múltiplas estratégias robustas."""
+    from urllib.parse import urljoin, quote
+
+    # 1. Tenta obter top_image do newspaper
+    if article_obj.top_image and 'http' in article_obj.top_image:
+        try:
+            resp = requests.head(article_obj.top_image, timeout=3, allow_redirects=True)
+            if resp.status_code == 200:
+                print(f"[DEBUG] Imagem encontrada via top_image: {article_obj.top_image[:60]}")
+                return article_obj.top_image
+        except:
+            pass
+
     try:
-        res = requests.get(url, headers=headers, timeout=10)
-        soup = BeautifulSoup(res.text, 'html.parser')
-        links = []
-        for a in soup.find_all('a', class_='result__a'):
-            href = a.get('href')
-            if href and 'http' in href:
-                links.append(href)
-            if len(links) >= max_results:
-                break
-        return links
+        soup = BeautifulSoup(article_obj.html, 'html.parser')
+
+        # 2. Meta tags (OpenGraph, Twitter Card) - Prioridade 1
+        meta_tags = [
+            ('og:image', 'property'),
+            ('og:image:url', 'property'),
+            ('og:image:secure_url', 'property'),
+            ('twitter:image', 'name'),
+            ('twitter:image:src', 'name'),
+            ('image', 'name'),
+        ]
+
+        for tag_name, tag_type in meta_tags:
+            if tag_type == 'property':
+                meta = soup.find('meta', property=tag_name)
+            else:
+                meta = soup.find('meta', attrs={'name': tag_name})
+
+            if meta and meta.get('content'):
+                img_url = urljoin(base_url, meta.get('content'))
+                try:
+                    if 'http' in img_url:
+                        resp = requests.head(img_url, timeout=3, allow_redirects=True)
+                        if resp.status_code == 200:
+                            print(f"[DEBUG] Imagem encontrada via meta tag: {tag_name}")
+                            return img_url
+                except:
+                    pass
+
+        # 3. Picture/img dentro de article/main - Prioridade 2
+        main_candidates = [
+            soup.find('article'),
+            soup.find('main'),
+            soup.find('div', class_=lambda x: x and 'content' in x.lower()),
+            soup.find('div', class_=lambda x: x and 'post' in x.lower()),
+            soup.find('div', class_=lambda x: x and 'entry' in x.lower()),
+        ]
+
+        for main_content in main_candidates:
+            if not main_content:
+                continue
+
+            for img in main_content.find_all('img')[:10]:
+                src = img.get('src') or img.get('data-src') or img.get('data-lazy-src')
+                if src:
+                    img_url = urljoin(base_url, src)
+                    try:
+                        if 'http' in img_url:
+                            resp = requests.head(img_url, timeout=3, allow_redirects=True)
+                            if resp.status_code == 200:
+                                print(f"[DEBUG] Imagem encontrada em article/main")
+                                return img_url
+                    except:
+                        pass
+
+        # 4. Imagens com classes típicas de destaque - Prioridade 3
+        img_classes = ['hero', 'featured', 'main', 'lead', 'cover', 'thumbnail', 'header']
+        for img in soup.find_all('img')[:30]:
+            img_class = img.get('class', [])
+            img_class_str = ' '.join(img_class) if isinstance(img_class, list) else str(img_class)
+
+            if any(cls in img_class_str.lower() for cls in img_classes):
+                src = img.get('src') or img.get('data-src') or img.get('data-lazy-src')
+                if src:
+                    img_url = urljoin(base_url, src)
+                    try:
+                        if 'http' in img_url:
+                            resp = requests.head(img_url, timeout=3, allow_redirects=True)
+                            if resp.status_code == 200:
+                                print(f"[DEBUG] Imagem encontrada via classe destaque")
+                                return img_url
+                    except:
+                        pass
+
+        # 5. Primeira imagem grande encontrada - Fallback
+        for img in soup.find_all('img')[:40]:
+            src = img.get('src') or img.get('data-src') or img.get('data-lazy-src')
+            if src and ('http' in src or src.startswith('/')):
+                img_url = urljoin(base_url, src)
+                try:
+                    if 'http' in img_url:
+                        resp = requests.head(img_url, timeout=3, allow_redirects=True)
+                        if resp.status_code == 200:
+                            print(f"[DEBUG] Imagem encontrada (primeira válida)")
+                            return img_url
+                except:
+                    pass
+
     except Exception as e:
-        print(f"Erro no DDG Search: {e}")
-        return []
+        print(f"[DEBUG] Erro ao extrair imagem: {e}")
+
+    # Fallback: Imagem gerada
+    title_slug = quote((article_obj.title or 'article')[:50])
+    print(f"[DEBUG] Usando imagem gerada como fallback")
+    return f"https://image.pollinations.ai/prompt/{title_slug}?width=400&height=200&nologo=true"
+
+def scrape_real_comments(url, max_comments=5):
+    """Tenta extrair comentários reais da página com múltiplas estratégias."""
+    comments_list = []
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept-Language': 'en-US,en;q=0.9'
+    }
+
+    try:
+        response = requests.get(url, headers=headers, timeout=6, allow_redirects=True)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, 'html.parser')
+
+        # Remove scripts e styles
+        for script in soup(["script", "style"]):
+            script.decompose()
+
+        # Estratégias múltiplas para encontrar comentários
+        comment_strategies = [
+            # Estratégia 1: Classes com 'comment'
+            lambda: soup.find_all(class_=lambda x: x and 'comment' in x.lower()),
+            # Estratégia 2: Data attributes
+            lambda: soup.find_all(attrs={'data-qa': lambda x: x and 'comment' in str(x).lower()}),
+            # Estratégia 3: itemprop
+            lambda: soup.find_all(attrs={'itemprop': 'comment'}),
+            # Estratégia 4: Divs dentro de seções de comentários
+            lambda: soup.find_all('div', class_=lambda x: x and any(c in str(x).lower() for c in ['response', 'feedback', 'discussion', 'thread', 'review'])),
+            # Estratégia 5: Li com comentários
+            lambda: soup.find_all('li', class_=lambda x: x and 'comment' in x.lower()),
+        ]
+
+        for strategy in comment_strategies:
+            if len(comments_list) >= max_comments:
+                break
+
+            try:
+                elements = strategy()
+                for elem in elements[:max_comments]:
+                    # Extrai texto do comentário
+                    text_elem = elem.find('p') or elem.find('span', class_=lambda x: x and 'text' in str(x).lower()) or elem.find('div')
+
+                    if text_elem:
+                        comment_text = text_elem.get_text(strip=True)
+                        # Validação de comprimento
+                        if 15 < len(comment_text) < 800 and comment_text not in comments_list:
+                            comments_list.append(comment_text)
+
+                    if len(comments_list) >= max_comments:
+                        break
+            except:
+                pass
+
+    except requests.Timeout:
+        print(f"[DEBUG] Timeout ao extrair comentários (URL muito lenta)")
+    except requests.ConnectionError:
+        print(f"[DEBUG] Erro de conexão ao extrair comentários")
+    except Exception as e:
+        print(f"[DEBUG] Erro ao extrair comentários reais: {type(e).__name__}")
+
+    return comments_list
+
+def extract_article_comments(article_text, article_url, query, selected_model, max_comments=5):
+    """Extrai comentários reais da página ou gera baseado no conteúdo."""
+    comments = []
+
+    # Tentativa 1: Extrair comentários reais da página
+    real_comments = scrape_real_comments(article_url, max_comments)
+
+    if real_comments:
+        print(f"[DEBUG] {len(real_comments)} comentários reais encontrados")
+        for comment_text in real_comments[:max_comments]:
+            try:
+                c_analysis = analysis_engine.analyze_text(comment_text, model_name=selected_model)
+                comments.append({
+                    "text": comment_text[:500],  # Limita tamanho
+                    "prediction": c_analysis.get('prediction', 'N/A'),
+                    "confidence": c_analysis.get('confidence', 0.0),
+                    "source": "real"
+                })
+            except:
+                pass
+
+    # Fallback: Comentários baseados no conteúdo do artigo
+    if len(comments) < max_comments:
+        try:
+            sentences = [s.strip() for s in article_text.split('.') if 20 < len(s.strip()) < 200][:10]
+
+            for j in range(max_comments - len(comments)):
+                base_sentence = random.choice(sentences) if sentences else query
+
+                comment_templates = [
+                    f"I completely agree with '{base_sentence[:50]}...' This is an important point.",
+                    f"Interesting perspective on {query}. However, I think there's more to consider.",
+                    f"This article raises valid concerns about {query} that we need to address.",
+                    f"Great insight! The point about {base_sentence[:40]}... really resonates.",
+                    f"I disagree with some parts, but overall good analysis of {query}.",
+                    f"Finally someone is covering this aspect of {query}!",
+                    f"This makes sense, especially regarding '{base_sentence[:45]}...'",
+                    f"Thought-provoking read. We should be discussing {query} more.",
+                ]
+
+                c_text = random.choice(comment_templates)
+                c_analysis = analysis_engine.analyze_text(c_text, model_name=selected_model)
+
+                comments.append({
+                    "text": c_text,
+                    "prediction": c_analysis.get('prediction', 'N/A'),
+                    "confidence": c_analysis.get('confidence', 0.0),
+                    "source": "contextual"
+                })
+        except Exception as e:
+            print(f"[DEBUG] Erro ao gerar comentários contextuais: {e}")
+
+    # Fallback final: Comentários genéricos
+    while len(comments) < max_comments:
+        c_text = generate_varied_comment(query)
+        c_analysis = analysis_engine.analyze_text(c_text, model_name=selected_model)
+        comments.append({
+            "text": c_text,
+            "prediction": c_analysis.get('prediction', 'N/A'),
+            "confidence": c_analysis.get('confidence', 0.0),
+            "source": "generated"
+        })
+
+    return comments[:max_comments]
 
 # --- Layout ---
 layout = dbc.Container([
@@ -313,83 +569,155 @@ def update_token_stats(n_clicks):
     Output("scraper-data-store", "data"),
     Input("btn-scraper", "n_clicks"),
     State("scraper-query", "value"),
-    State('model-selector-analyzer', 'value'), # Novo State
+    State('model-selector-analyzer', 'value'),
     prevent_initial_call=True
 )
 def fetch_scraper_data(n_clicks, query, selected_model):
     if not query: return no_update
     
     data = []
-    real_urls = search_duckduckgo(query, max_results=5)
-    
-    for i, url in enumerate(real_urls):
+    real_urls = search_serpapi(query, max_results=15)  # Busca mais URLs para maior cobertura
+    processed_urls = set()
+
+    print(f"\n{'='*60}")
+    print(f"[SONDA WEB] Iniciando busca por: {query}")
+    print(f"[SONDA WEB] Total de URLs encontradas: {len(real_urls)}")
+    print(f"{'='*60}")
+
+    # FASE 1: Web scraping robusto de artigos reais
+    for idx, url in enumerate(real_urls, 1):
+        if len(data) >= 5:
+            break
+
+        if url in processed_urls:
+            continue
+        processed_urls.add(url)
+
+        print(f"\n[{idx}] Processando: {url[:60]}...")
+
         try:
-            article = Article(url)
-            article.download()
-            article.parse()
-            if len(article.text) < 100: continue
-                
-            # Usar modelo selecionado
+            # Download e parse com retry
+            article = None
+            for attempt in range(2):
+                try:
+                    config = newspaper.Config()
+                    config.request_timeout = 8
+                    article = Article(url, config=config, keep_article_html=True)
+                    article.download()
+                    article.parse()
+                    break
+                except Exception as e:
+                    print(f"Tentativa {attempt + 1}: {type(e).__name__}")
+                    if attempt == 0:
+                        time.sleep(1)
+
+            if not article:
+                print(f"Falha no download/parse")
+                continue
+
+            # Validações de conteúdo
+            if not article.text or len(article.text) < 150:
+                print(f"Conteúdo muito curto ({len(article.text) if article.text else 0} chars)")
+                continue
+
+            if not article.title or len(article.title) < 5:
+                print(f"Título inválido")
+                continue
+
+            print(f"Artigo: {article.title[:50]}...")
+            print(f"Conteúdo: {len(article.text)} caracteres")
+
+            # Análise do artigo
             art_analysis = analysis_engine.analyze_text(article.text, model_name=selected_model)
             
-            comments = []
-            for j in range(5):
-                c_text = generate_varied_comment(query)
-                # Usar modelo selecionado
-                c_analysis = analysis_engine.analyze_text(c_text, model_name=selected_model)
-                comments.append({
-                    "text": c_text,
-                    "prediction": c_analysis.get('prediction', 'N/A'),
-                    "confidence": c_analysis.get('confidence', 0.0)
-                })
-            
-            img_url = article.top_image
-            if not img_url or 'http' not in img_url:
-                img_url = f"https://image.pollinations.ai/prompt/{query}%20news%20{i}?width=400&height=200&nologo=true"
+            # Extração robusta de imagem
+            base_url = article.source_url if hasattr(article, 'source_url') else url
+            img_url = extract_article_image(article, base_url)
 
+            # Extração de comentários (reais > contextuais > genéricos)
+            comments = extract_article_comments(article.text, url, query, selected_model, max_comments=5)
+            print(f"Comentários: {len(comments)} ({comments[0].get('source', 'unknown') if comments else 'nenhum'})")
+
+            # Adiciona artigo real aos dados
             data.append({
-                "id": i,
-                "title": article.title or f"News about {query}",
+                "id": len(data),
+                "title": article.title,
                 "url": url,
                 "image": img_url,
                 "text": article.text,
                 "prediction": art_analysis.get('prediction', 'N/A'),
                 "confidence": art_analysis.get('confidence', 0.0),
-                "comments": comments
+                "comments": comments,
+                "source": "real"
             })
+            print(f"Artigo real adicionado (ID: {len(data)-1})")
+
         except Exception as e:
-            print(f"Erro ao processar URL {url}: {e}")
+            print(f"Erro: {type(e).__name__}: {str(e)[:60]}")
             continue
-        if len(data) >= 5: break
-            
+
+    # FASE 2: Fallback - apenas se não conseguiu artigos reais suficientes
+    print(f"\n{'='*60}")
+    print(f"[STATUS] Artigos reais encontrados: {len(data)}/5")
+    print(f"{'='*60}")
+
     while len(data) < 5:
         i = len(data)
-        full_text = generate_dynamic_text(query) + " " + generate_dynamic_text(query)
-        
-        # Usar modelo selecionado
-        art_analysis = analysis_engine.analyze_text(full_text, model_name=selected_model)
-        
-        comments = []
-        for j in range(5):
-            c_text = generate_varied_comment(query)
-            # Usar modelo selecionado
-            c_analysis = analysis_engine.analyze_text(c_text, model_name=selected_model)
-            comments.append({
-                "text": c_text,
-                "prediction": c_analysis.get('prediction', 'N/A'),
-                "confidence": c_analysis.get('confidence', 0.0)
+        print(f"\n[FALLBACK] Gerando artigo sintético #{i+1}...")
+
+        try:
+            # Gera conteúdo pseudo-realista apenas como fallback
+            full_text = generate_dynamic_text(query) + " " + generate_dynamic_text(query)
+            art_analysis = analysis_engine.analyze_text(full_text, model_name=selected_model)
+
+            # Comentários em fallback
+            comments = []
+            for j in range(5):
+                c_text = generate_varied_comment(query)
+                c_analysis = analysis_engine.analyze_text(c_text, model_name=selected_model)
+                comments.append({
+                    "text": c_text,
+                    "prediction": c_analysis.get('prediction', 'N/A'),
+                    "confidence": c_analysis.get('confidence', 0.0),
+                    "source": "generated"
+                })
+
+            # Imagem gerada como fallback
+            from urllib.parse import quote
+            img_url = f"https://image.pollinations.ai/prompt/{quote(query + ' concept ' + str(i))}?width=400&height=200&nologo=true&seed={random.randint(0, 100000)}"
+
+            data.append({
+                "id": i,
+                "title": f"Analysis: {query} #{i+1}",
+                "url": f"#generated-{i}",
+                "image": img_url,
+                "text": full_text,
+                "prediction": art_analysis.get('prediction', 'N/A'),
+                "confidence": art_analysis.get('confidence', 0.0),
+                "comments": comments,
+                "source": "generated"
             })
-        img_url = f"https://image.pollinations.ai/prompt/{query}%20concept%20{i}?width=400&height=200&nologo=true"
-        data.append({
-            "id": i,
-            "title": f"Report: {query} Analysis #{i+1}",
-            "url": f"#simulated-{i}",
-            "image": img_url,
-            "text": full_text,
-            "prediction": art_analysis.get('prediction', 'N/A'),
-            "confidence": art_analysis.get('confidence', 0.0),
-            "comments": comments
-        })
+            print(f"Artigo sintético adicionado (ID: {i})")
+
+        except Exception as e:
+            print(f"Erro ao gerar fallback: {e}")
+            # Fallback extremo: artigo mínimo
+            data.append({
+                "id": i,
+                "title": f"Report about {query}",
+                "url": f"#fallback-{i}",
+                "image": "https://image.pollinations.ai/prompt/placeholder?width=400&height=200",
+                "text": f"Information about {query}.",
+                "prediction": "N/A",
+                "confidence": 0.0,
+                "comments": [],
+                "source": "generated"
+            })
+
+    print(f"\n{'='*60}")
+    print(f"[CONCLUSÃO] Total de itens retornados: {len(data)}")
+    print(f"{'='*60}\n")
+
     return data
 
 @callback(

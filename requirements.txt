@@ -11,3 +11,5 @@ requests>=2.31.0
 numpy<2.0.0
 newspaper3k>=0.2.8
 lxml_html_clean>=0.1.0
+xgboost>=2.0.0
+tf_keras>=2.15.0

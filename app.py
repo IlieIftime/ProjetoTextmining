@@ -59,4 +59,4 @@ app.layout = html.Div([
 
 if __name__ == '__main__':
     print("Iniciando servidor...")
-    app.run_server(debug=True)
+    app.run(debug=True)

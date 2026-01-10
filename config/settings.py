@@ -121,3 +121,4 @@ def get_diagnostic_paths(model_name):
             break
             
     return cm_path, report_path
+
