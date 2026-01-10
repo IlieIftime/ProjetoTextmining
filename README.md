@@ -16,8 +16,10 @@ Aplicação web de análise linguística para distinguir texto gerado por IA de 
 │   └── model_loader.py
 ├── pages/              # Páginas da aplicação Dash
 │   ├── analyzer.py
-│   ├── model_lab.py
+│   ├── model_lab.py     
 │   └── study_summary.py
+|── Copyright.txt
+|── estudo_text_mining_samples2.ipynb
 ├── app.py              # Ponto de entrada da aplicação
 └── requirements.txt    # Dependências do projeto
 ```
@@ -42,3 +44,22 @@ Aplicação web de análise linguística para distinguir texto gerado por IA de 
    ```bash
    python app.py
    ```
+## PS: caso dê erro na linha de run.app_server(debug=True) trocar por app.run(debug=True)
+#### Instruções para clonar o repositório e obter ficheiros grandes 
+Resumo  
+
+##### Os ficheiros grandes do projeto (modelos e CSVs) são geridos com Git LFS. Para obter os ficheiros de csv (datasets) deve ter Git LFS instalado ou executar um passo adicional para baixar os ficheiros LFS.
+
+### 1. Instalar Git LFS (uma vez)
+```bash
+git lfs install
+```
+ ### 2. Clonar o repositório
+git clone https://github.com/IlieIftime/ProjetoTextmining.git
+```bash
+cd ProjetoTextmining
+```
+ ### 3. Baixar os ficheiros LFS (se necessário)
+```bash
+git lfs pull
+```
