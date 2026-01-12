@@ -22,23 +22,49 @@ Aplicação web de análise linguística para distinguir texto gerado por IA de 
 └── requirements.txt    # Dependências do projeto
 ```
 
+
 ## Setup
 
-1. Crie um ambiente virtual:
+### 1. Instale o Git LFS:
+  ```bash
+   git lfs install
+   ```
+
+### 2. Clone o repositório (o Git LFS irá buscar automaticamente os ficheiros grandes):
+ ```bash
+git clone https://github.com/IlieIftime/ProjetoTextmining.git
+cd ProjetoTextmining
+   ```
+
+### 3.  Clonar os dataset para correr o notebook:
+  ```bash
+   git lfs pull
+   ```
+
+### 4. Crie um ambiente virtual:
    ```bash
    python -m venv .venv
    ```
 
-2. Ative o ambiente virtual:
-   - Windows: `.venv\Scripts\activate`
-   - Linux/Mac: `source .venv/bin/activate`
-
-3. Instale as dependências:
+### 5. Ative o ambiente virtual:
+   Windows:
    ```bash
-   pip install -r requirements.txt
+   .venv\Scripts\activate
    ```
 
-4. Execute a aplicação:
-   ```bash
-   python app.py
-   ```
+   Linux/Mac:
+  ```bash
+  source .venv/bin/activate
+  ```
+
+### 6. Instale as dependências:
+```bash
+pip install -r requirements.txt
+```
+
+### 7. Execute a aplicação:
+```bash
+python app.py
+```
+
+   
