@@ -345,4 +345,4 @@ Consult [`Copyright.txt`](Copyright.txt) for the copyright information provided 
 
 ## Project status
 
-This is an academic/research project in progress. The notebook is the main reference for the experimental process; the Dash app presents the results and makes the study more accessible for exploration and classification use cases.
+This is an academic/research project. The notebook is the main reference for the experimental process; the Dash app presents the results and makes the study more accessible for exploration and classification use cases.
