@@ -1,7 +1,9 @@
 
 Copyright 2025 Authors:
+Guilherme Real (124456)
 Ilie Iftime (112779)
 Inês Cruz (123557)
+Marin Cepeleaga (123550)
 Sofia Quintino (123554)
 ISCTE-Sintra
 
